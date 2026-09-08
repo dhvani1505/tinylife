@@ -9,7 +9,7 @@ import authenticateToken, {
 
 const app = express()
 
-const PORT = 5000
+const PORT = Number(process.env.PORT) || 5000
 
 app.use(cors())
 app.use(express.json())
@@ -1372,7 +1372,7 @@ pool
       result.rows[0].now
     )
 
-    app.listen(PORT, () => {
+  app.listen(PORT, "0.0.0.0", () => {
       console.log(
         `TinyLife server running on http://localhost:${PORT}`
       )

@@ -4,8 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only server.ts"
-  },
+  "dev": "ts-node-dev --respawn --transpile-only server.ts",
+  "start": "ts-node --transpile-only server.ts"
+},
   "keywords": [],
   "author": "",
   "license": "ISC",
