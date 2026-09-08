@@ -1,8 +1,13 @@
 import { useState } from "react"
 import axios from "axios"
-import { Link } from "react-router-dom"
+import {
+  Link,
+  useNavigate,
+} from "react-router-dom"
 
 function Register() {
+  const navigate = useNavigate()
+
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -28,11 +33,17 @@ function Register() {
         }
       )
 
-      setMessage("Account created successfully.")
+      setMessage(
+        "Account created successfully. Redirecting to login..."
+      )
 
       setName("")
       setEmail("")
       setPassword("")
+
+      setTimeout(() => {
+        navigate("/login")
+      }, 1000)
     } catch (error: any) {
       setMessage(
         error.response?.data?.message ||
@@ -44,6 +55,7 @@ function Register() {
   return (
     <div className="login-page">
       <div className="login-card">
+
         <h1>TinyLife</h1>
 
         <p className="login-subtitle">
@@ -51,6 +63,7 @@ function Register() {
         </p>
 
         <form onSubmit={handleRegister}>
+
           <label>Name</label>
 
           <input
@@ -87,6 +100,7 @@ function Register() {
           <button type="submit">
             Create Account
           </button>
+
         </form>
 
         {message && (
@@ -97,8 +111,11 @@ function Register() {
 
         <p className="login-footer">
           Already have an account?{" "}
-          <Link to="/login">Login</Link>
+          <Link to="/login">
+            Login
+          </Link>
         </p>
+
       </div>
     </div>
   )

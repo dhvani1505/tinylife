@@ -100,7 +100,7 @@ function VerifyOTP() {
           </label>
 
           <input
-            type="text"
+            type="text"   className="otp-input"
             inputMode="numeric"
             maxLength={6}
             placeholder="Enter 6-digit OTP"
