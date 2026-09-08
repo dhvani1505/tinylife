@@ -3,6 +3,7 @@ import cors from "cors"
 import pool from "./db"
 import bcrypt from "bcrypt"
 import jwt from "jsonwebtoken"
+import crypto from "crypto"
 import authenticateToken, {
   AuthRequest,
 } from "./authMiddleware"
@@ -138,6 +139,231 @@ app.post("/api/login", async (req, res) => {
     })
   }
 })
+
+// ==================================================
+// FORGOT PASSWORD
+// ==================================================
+
+app.post(
+  "/api/forgot-password",
+  async (req, res) => {
+    const { email } = req.body
+
+    if (!email) {
+      return res.status(400).json({
+        message: "Email is required",
+      })
+    }
+
+    try {
+      const result = await pool.query(
+        `SELECT id
+         FROM users
+         WHERE email = $1`,
+        [email]
+      )
+
+      // Always return the same message so an email
+      // address cannot be used to discover accounts.
+      const genericMessage =
+        "If an account exists with this email, a password reset link has been generated."
+
+      if (result.rows.length === 0) {
+        return res.json({
+          message: genericMessage,
+        })
+      }
+
+      const userId = result.rows[0].id
+
+      const resetToken =
+        crypto.randomBytes(32).toString("hex")
+
+      const resetTokenExpires =
+        new Date(
+          Date.now() + 15 * 60 * 1000
+        )
+
+      await pool.query(
+        `UPDATE users
+         SET reset_token = $1,
+             reset_token_expires = $2
+         WHERE id = $3`,
+        [
+          resetToken,
+          resetTokenExpires,
+          userId,
+        ]
+      )
+
+      const appUrl =
+        process.env.APP_URL ||
+        "http://localhost:5173"
+
+      const resetLink =
+        `${appUrl}/reset-password?token=${resetToken}`
+
+      const resendResponse =
+        await fetch(
+          "https://api.resend.com/emails",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+              Authorization:
+                `Bearer ${process.env.RESEND_API_KEY}`,
+            },
+            body: JSON.stringify({
+              from:
+                process.env.RESEND_FROM_EMAIL ||
+                "TinyLife <onboarding@resend.dev>",
+              to: [email],
+              subject:
+                "Reset your TinyLife password",
+              html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
+                  <h2>Reset your TinyLife password</h2>
+                  <p>We received a request to reset your TinyLife password.</p>
+                  <p>
+                    <a
+                      href="${resetLink}"
+                      style="display: inline-block; padding: 12px 18px; background: #d6a56d; color: white; text-decoration: none; border-radius: 8px;"
+                    >
+                      Reset Password
+                    </a>
+                  </p>
+                  <p>This link will expire in 15 minutes.</p>
+                  <p>If you didn't request this, you can safely ignore this email.</p>
+                </div>
+              `,
+            }),
+          }
+        )
+
+      if (!resendResponse.ok) {
+        const resendError =
+          await resendResponse.text()
+
+        console.error(
+          "Resend email error:",
+          resendError
+        )
+
+        return res.status(500).json({
+          message:
+            "Unable to send the password reset email. Please try again.",
+        })
+      }
+
+      res.json({
+        message: genericMessage,
+      })
+    } catch (error) {
+      console.error(
+        "Error creating password reset token:",
+        error
+      )
+
+      res.status(500).json({
+        message:
+          "Something went wrong. Please try again.",
+      })
+    }
+  }
+)
+
+// ==================================================
+// RESET PASSWORD
+// ==================================================
+
+app.post(
+  "/api/reset-password",
+  async (req, res) => {
+    const {
+      token,
+      newPassword,
+      confirmPassword,
+    } = req.body
+
+    if (
+      !token ||
+      !newPassword ||
+      !confirmPassword
+    ) {
+      return res.status(400).json({
+        message:
+          "Token and all password fields are required.",
+      })
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({
+        message:
+          "New passwords do not match.",
+      })
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        message:
+          "New password must be at least 6 characters.",
+      })
+    }
+
+    try {
+      const result = await pool.query(
+        `SELECT id
+         FROM users
+         WHERE reset_token = $1
+           AND reset_token_expires > CURRENT_TIMESTAMP`,
+        [token]
+      )
+
+      if (result.rows.length === 0) {
+        return res.status(400).json({
+          message:
+            "This password reset link is invalid or has expired.",
+        })
+      }
+
+      const userId = result.rows[0].id
+
+      const hashedPassword =
+        await bcrypt.hash(
+          newPassword,
+          10
+        )
+
+      await pool.query(
+        `UPDATE users
+         SET password = $1,
+             reset_token = NULL,
+             reset_token_expires = NULL
+         WHERE id = $2`,
+        [
+          hashedPassword,
+          userId,
+        ]
+      )
+
+      res.json({
+        message:
+          "Password reset successfully.",
+      })
+    } catch (error) {
+      console.error(
+        "Error resetting password:",
+        error
+      )
+
+      res.status(500).json({
+        message:
+          "Failed to reset password.",
+      })
+    }
+  }
+)
 
 // ==================================================
 // HOME
@@ -1372,7 +1598,7 @@ pool
       result.rows[0].now
     )
 
-  app.listen(PORT, "0.0.0.0", () => {
+    app.listen(PORT, "0.0.0.0", () => {
       console.log(
         `TinyLife server running on http://localhost:${PORT}`
       )

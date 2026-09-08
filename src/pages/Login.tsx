@@ -1,13 +1,21 @@
 import { useState } from "react"
-import { Link, useNavigate } from "react-router-dom"
+import {
+  Link,
+  useNavigate,
+} from "react-router-dom"
 import axios from "axios"
 
 function Login() {
   const navigate = useNavigate()
 
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [message, setMessage] = useState("")
+  const [email, setEmail] =
+    useState("")
+
+  const [password, setPassword] =
+    useState("")
+
+  const [message, setMessage] =
+    useState("")
 
   const handleLogin = async (
     event: React.FormEvent
@@ -30,8 +38,11 @@ function Login() {
         }
       )
 
-      const user = response.data.user
-      const token = response.data.token
+      const user =
+        response.data.user
+
+      const token =
+        response.data.token
 
       localStorage.setItem(
         "tinylife-user",
@@ -54,7 +65,9 @@ function Login() {
 
   return (
     <div className="login-page">
+
       <div className="login-card">
+
         <h1>TinyLife</h1>
 
         <p className="login-subtitle">
@@ -62,31 +75,47 @@ function Login() {
         </p>
 
         <form onSubmit={handleLogin}>
-          <label>Email</label>
+
+          <label>
+            Email
+          </label>
 
           <input
             type="email"
             placeholder="Enter your email"
             value={email}
             onChange={(event) =>
-              setEmail(event.target.value)
+              setEmail(
+                event.target.value
+              )
             }
           />
 
-          <label>Password</label>
+          <label>
+            Password
+          </label>
 
           <input
             type="password"
             placeholder="Enter your password"
             value={password}
             onChange={(event) =>
-              setPassword(event.target.value)
+              setPassword(
+                event.target.value
+              )
             }
           />
+
+          <div className="forgot-password">
+            <Link to="/forgot-password">
+              Forgot Password?
+            </Link>
+          </div>
 
           <button type="submit">
             Login
           </button>
+
         </form>
 
         {message && (
@@ -97,9 +126,13 @@ function Login() {
 
         <p className="login-footer">
           Don't have an account?{" "}
-          <Link to="/register">Sign up</Link>
+          <Link to="/register">
+            Sign up
+          </Link>
         </p>
+
       </div>
+
     </div>
   )
 }

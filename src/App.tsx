@@ -12,6 +12,9 @@ import Sidebar from "./components/Sidebar"
 
 import Login from "./pages/Login"
 import Register from "./pages/Register"
+import ForgotPassword from "./pages/ForgotPassword"
+import ResetPassword from "./pages/ResetPassword"
+
 import Overview from "./pages/Overview"
 import Tasks from "./pages/Tasks"
 import Habits from "./pages/Habits"
@@ -20,10 +23,6 @@ import Expenses from "./pages/Expenses"
 import Journal from "./pages/Journal"
 import Goals from "./pages/Goals"
 import Settings from "./pages/Settings"
-
-// ==================================================
-// SEND JWT WITH EVERY API REQUEST
-// ==================================================
 
 axios.interceptors.request.use((config) => {
   const token = localStorage.getItem(
@@ -51,57 +50,62 @@ axios.interceptors.request.use((config) => {
   return config
 })
 
-// ==================================================
-// AUTOMATIC LOGOUT FOR INVALID / EXPIRED JWT
-// ==================================================
-
 axios.interceptors.response.use(
   (response) => {
     return response
   },
   (error) => {
-    const status = error.response?.status
-    const token = localStorage.getItem(
-      "tinylife-token"
-    )
+    const status =
+      error.response?.status
+
+    const token =
+      localStorage.getItem(
+        "tinylife-token"
+      )
 
     if (
       token &&
-      (status === 401 || status === 403)
+      (status === 401 ||
+        status === 403)
     ) {
-      localStorage.removeItem("tinylife-user")
-      localStorage.removeItem("tinylife-token")
+      localStorage.removeItem(
+        "tinylife-user"
+      )
 
-      window.location.href = "/login"
+      localStorage.removeItem(
+        "tinylife-token"
+      )
+
+      window.location.href =
+        "/login"
     }
 
     return Promise.reject(error)
   }
 )
 
-// ==================================================
-// PROTECTED ROUTE
-// ==================================================
-
 function ProtectedRoute() {
-  const user = localStorage.getItem(
-    "tinylife-user"
-  )
+  const user =
+    localStorage.getItem(
+      "tinylife-user"
+    )
 
-  const token = localStorage.getItem(
-    "tinylife-token"
-  )
+  const token =
+    localStorage.getItem(
+      "tinylife-token"
+    )
 
   if (!user || !token) {
-    return <Navigate to="/login" replace />
+    return (
+      <Navigate
+        to="/login"
+        replace
+      />
+    )
   }
 
   return <DashboardLayout />
 }
-
-// ==================================================
-// DASHBOARD LAYOUT
-// ==================================================
 
 function DashboardLayout() {
   return (
@@ -167,10 +171,6 @@ function DashboardLayout() {
   )
 }
 
-// ==================================================
-// APP
-// ==================================================
-
 function App() {
   return (
     <BrowserRouter>
@@ -185,6 +185,16 @@ function App() {
         <Route
           path="/register"
           element={<Register />}
+        />
+
+        <Route
+          path="/forgot-password"
+          element={<ForgotPassword />}
+        />
+
+        <Route
+          path="/reset-password"
+          element={<ResetPassword />}
         />
 
         <Route
