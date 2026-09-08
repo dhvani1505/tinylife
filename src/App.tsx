@@ -30,6 +30,19 @@ axios.interceptors.request.use((config) => {
     "tinylife-token"
   )
 
+  if (
+    config.url &&
+    config.url.startsWith(
+      "http://localhost:5000"
+    )
+  ) {
+    config.url =
+      `${import.meta.env.VITE_API_URL}${config.url.replace(
+        "http://localhost:5000",
+        ""
+      )}`
+  }
+
   if (token) {
     config.headers.Authorization =
       `Bearer ${token}`
