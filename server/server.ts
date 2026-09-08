@@ -140,8 +140,9 @@ app.post("/api/login", async (req, res) => {
   }
 })
 
+
 // ==================================================
-// FORGOT PASSWORD
+// FORGOT PASSWORD - SEND OTP
 // ==================================================
 
 app.post(
@@ -163,10 +164,8 @@ app.post(
         [email]
       )
 
-      // Always return the same message so an email
-      // address cannot be used to discover accounts.
       const genericMessage =
-        "If an account exists with this email, a password reset link has been generated."
+        "If an account exists with this email, a password reset OTP has been sent."
 
       if (result.rows.length === 0) {
         return res.json({
@@ -176,65 +175,78 @@ app.post(
 
       const userId = result.rows[0].id
 
-      const resetToken =
-        crypto.randomBytes(32).toString("hex")
+      // Generate a 6-digit OTP
+      const otp = crypto
+        .randomInt(100000, 1000000)
+        .toString()
 
-      const resetTokenExpires =
+      // OTP expires in 10 minutes
+      const otpExpires =
         new Date(
-          Date.now() + 15 * 60 * 1000
+          Date.now() + 10 * 60 * 1000
         )
 
       await pool.query(
         `UPDATE users
-         SET reset_token = $1,
-             reset_token_expires = $2
+         SET reset_otp = $1,
+             reset_otp_expires = $2
          WHERE id = $3`,
         [
-          resetToken,
-          resetTokenExpires,
+          otp,
+          otpExpires,
           userId,
         ]
       )
-
-      const appUrl =
-        process.env.APP_URL ||
-        "http://localhost:5173"
-
-      const resetLink =
-        `${appUrl}/reset-password?token=${resetToken}`
 
       const resendResponse =
         await fetch(
           "https://api.resend.com/emails",
           {
             method: "POST",
+
             headers: {
               "Content-Type":
                 "application/json",
+
               Authorization:
                 `Bearer ${process.env.RESEND_API_KEY}`,
             },
+
             body: JSON.stringify({
               from:
                 process.env.RESEND_FROM_EMAIL ||
                 "TinyLife <onboarding@resend.dev>",
+
               to: [email],
+
               subject:
-                "Reset your TinyLife password",
+                "Your TinyLife password reset OTP",
+
               html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
+
                   <h2>Reset your TinyLife password</h2>
-                  <p>We received a request to reset your TinyLife password.</p>
+
                   <p>
-                    <a
-                      href="${resetLink}"
-                      style="display: inline-block; padding: 12px 18px; background: #d6a56d; color: white; text-decoration: none; border-radius: 8px;"
-                    >
-                      Reset Password
-                    </a>
+                    We received a request to reset your TinyLife password.
                   </p>
-                  <p>This link will expire in 15 minutes.</p>
-                  <p>If you didn't request this, you can safely ignore this email.</p>
+
+                  <p>
+                    Your password reset OTP is:
+                  </p>
+
+                  <div style="font-size: 32px; font-weight: bold; letter-spacing: 8px; margin: 24px 0;">
+                    ${otp}
+                  </div>
+
+                  <p>
+                    This OTP will expire in 10 minutes.
+                  </p>
+
+                  <p>
+                    If you didn't request this, you can safely ignore this email.
+                  </p>
+
                 </div>
               `,
             }),
@@ -261,7 +273,7 @@ app.post(
       })
     } catch (error) {
       console.error(
-        "Error creating password reset token:",
+        "Error creating password reset OTP:",
         error
       )
 
@@ -274,26 +286,77 @@ app.post(
 )
 
 // ==================================================
-// RESET PASSWORD
+// VERIFY PASSWORD RESET OTP
+// ==================================================
+
+app.post(
+  "/api/verify-reset-otp",
+  async (req, res) => {
+    const { email, otp } = req.body
+
+    if (!email || !otp) {
+      return res.status(400).json({
+        message:
+          "Email and OTP are required.",
+      })
+    }
+
+    try {
+      const result = await pool.query(
+        `SELECT id
+         FROM users
+         WHERE email = $1
+           AND reset_otp = $2
+           AND reset_otp_expires > CURRENT_TIMESTAMP`,
+        [email, otp]
+      )
+
+      if (result.rows.length === 0) {
+        return res.status(400).json({
+          message:
+            "Invalid or expired OTP.",
+        })
+      }
+
+      res.json({
+        message: "OTP verified successfully.",
+      })
+    } catch (error) {
+      console.error(
+        "Error verifying reset OTP:",
+        error
+      )
+
+      res.status(500).json({
+        message:
+          "Failed to verify OTP.",
+      })
+    }
+  }
+)
+// ==================================================
+// RESET PASSWORD WITH OTP
 // ==================================================
 
 app.post(
   "/api/reset-password",
   async (req, res) => {
     const {
-      token,
+      email,
+      otp,
       newPassword,
       confirmPassword,
     } = req.body
 
     if (
-      !token ||
+      !email ||
+      !otp ||
       !newPassword ||
       !confirmPassword
     ) {
       return res.status(400).json({
         message:
-          "Token and all password fields are required.",
+          "Email, OTP and all password fields are required.",
       })
     }
 
@@ -315,15 +378,16 @@ app.post(
       const result = await pool.query(
         `SELECT id
          FROM users
-         WHERE reset_token = $1
-           AND reset_token_expires > CURRENT_TIMESTAMP`,
-        [token]
+         WHERE email = $1
+           AND reset_otp = $2
+           AND reset_otp_expires > CURRENT_TIMESTAMP`,
+        [email, otp]
       )
 
       if (result.rows.length === 0) {
         return res.status(400).json({
           message:
-            "This password reset link is invalid or has expired.",
+            "Invalid or expired OTP.",
         })
       }
 
@@ -338,8 +402,8 @@ app.post(
       await pool.query(
         `UPDATE users
          SET password = $1,
-             reset_token = NULL,
-             reset_token_expires = NULL
+             reset_otp = NULL,
+             reset_otp_expires = NULL
          WHERE id = $2`,
         [
           hashedPassword,

@@ -23,6 +23,7 @@ import Expenses from "./pages/Expenses"
 import Journal from "./pages/Journal"
 import Goals from "./pages/Goals"
 import Settings from "./pages/Settings"
+import VerifyOTP from "./pages/VerifyOTP"
 
 axios.interceptors.request.use((config) => {
   const token = localStorage.getItem(
@@ -191,7 +192,10 @@ function App() {
           path="/forgot-password"
           element={<ForgotPassword />}
         />
-
+<Route
+  path="/verify-otp"
+  element={<VerifyOTP />}
+/>
         <Route
           path="/reset-password"
           element={<ResetPassword />}

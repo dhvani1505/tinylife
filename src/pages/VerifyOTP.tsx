@@ -5,10 +5,14 @@ import {
 } from "react-router-dom"
 import axios from "axios"
 
-function ForgotPassword() {
+function VerifyOTP() {
   const navigate = useNavigate()
 
-  const [email, setEmail] =
+  const email = new URLSearchParams(
+    window.location.search
+  ).get("email")
+
+  const [otp, setOtp] =
     useState("")
 
   const [message, setMessage] =
@@ -26,7 +30,21 @@ function ForgotPassword() {
 
     if (!email) {
       setMessage(
-        "Please enter your email address."
+        "Invalid or missing email."
+      )
+      return
+    }
+
+    if (!otp) {
+      setMessage(
+        "Please enter the OTP."
+      )
+      return
+    }
+
+    if (!/^\d{6}$/.test(otp)) {
+      setMessage(
+        "OTP must be 6 digits."
       )
       return
     }
@@ -34,28 +52,23 @@ function ForgotPassword() {
     try {
       setLoading(true)
 
-      const response =
-        await axios.post(
-          "http://localhost:5000/api/forgot-password",
-          {
-            email,
-          }
-        )
-
-      setMessage(
-        response.data.message ||
-          "If an account exists with this email, a password reset OTP has been sent."
+      await axios.post(
+        "http://localhost:5000/api/verify-reset-otp",
+        {
+          email,
+          otp,
+        }
       )
 
-      setTimeout(() => {
-        navigate(
-          `/verify-otp?email=${encodeURIComponent(email)}`
-        )
-      }, 1000)
+      navigate(
+        `/reset-password?email=${encodeURIComponent(
+          email
+        )}&otp=${otp}`
+      )
     } catch (error: any) {
       setMessage(
         error.response?.data?.message ||
-          "Something went wrong. Please try again."
+          "Invalid or expired OTP."
       )
     } finally {
       setLoading(false)
@@ -70,12 +83,12 @@ function ForgotPassword() {
         <h1>TinyLife</h1>
 
         <p className="login-subtitle">
-          Reset your password
+          Verify your OTP
         </p>
 
         <p>
-          Enter your email address and
-          we'll send you a 6-digit OTP.
+          Enter the 6-digit OTP sent
+          to your email address.
         </p>
 
         <form
@@ -83,16 +96,21 @@ function ForgotPassword() {
         >
 
           <label>
-            Email
+            OTP
           </label>
 
           <input
-            type="email"
-            placeholder="Enter your email"
-            value={email}
+            type="text"
+            inputMode="numeric"
+            maxLength={6}
+            placeholder="Enter 6-digit OTP"
+            value={otp}
             onChange={(event) =>
-              setEmail(
-                event.target.value
+              setOtp(
+                event.target.value.replace(
+                  /\D/g,
+                  ""
+                )
               )
             }
           />
@@ -102,8 +120,8 @@ function ForgotPassword() {
             disabled={loading}
           >
             {loading
-              ? "Sending..."
-              : "Send OTP"}
+              ? "Verifying..."
+              : "Verify OTP"}
           </button>
 
         </form>
@@ -115,9 +133,8 @@ function ForgotPassword() {
         )}
 
         <p className="login-footer">
-          Remember your password?{" "}
-          <Link to="/login">
-            Back to Login
+          <Link to="/forgot-password">
+            Back to Forgot Password
           </Link>
         </p>
 
@@ -127,4 +144,4 @@ function ForgotPassword() {
   )
 }
 
-export default ForgotPassword
+export default VerifyOTP

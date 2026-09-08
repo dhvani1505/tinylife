@@ -8,9 +8,13 @@ import axios from "axios"
 function ResetPassword() {
   const navigate = useNavigate()
 
-  const token = new URLSearchParams(
-    window.location.search
-  ).get("token")
+  const params =
+    new URLSearchParams(
+      window.location.search
+    )
+
+  const email = params.get("email")
+  const otp = params.get("otp")
 
   const [password, setPassword] =
     useState("")
@@ -31,9 +35,9 @@ function ResetPassword() {
 
     setMessage("")
 
-    if (!token) {
+    if (!email || !otp) {
       setMessage(
-        "Invalid or missing reset link."
+        "Invalid or missing OTP."
       )
       return
     }
@@ -68,7 +72,8 @@ function ResetPassword() {
         await axios.post(
           "http://localhost:5000/api/reset-password",
           {
-            token,
+            email,
+            otp,
             newPassword: password,
             confirmPassword,
           }

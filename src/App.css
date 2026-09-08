@@ -3727,3 +3727,13 @@ button:disabled {
   color: #b44a4a;
   font-size: 13px;
 }
+/* =========================================================
+   OTP INPUT
+   ========================================================= */
+
+.otp-input {
+  text-align: center;
+  font-size: 22px !important;
+  font-weight: 700;
+  letter-spacing: 6px;
+}
